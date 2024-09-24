@@ -1,0 +1,85 @@
+{% extends 'core/base_layout.html' %}
+{% load static %}
+
+{% block title %}MRI Brain Scan Analysis Dashboard{% endblock %}
+
+{% block body %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-gray-700">MRI Brain Scan Analysis Dashboard</h1>
+</div>
+
+<!-- MRI Brain Scan Analysis Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    <!-- Total MRI Scans Analyzed Card -->
+    <div class="bg-white shadow-lg p-4 border-l-4 border-blue-500">
+        <div class="flex justify-between items-start">
+            <div class="text-left">
+                <p class="text-gray-500 text-sm">Total MRI Scans Analyzed</p>
+                <p class="text-black text-3xl font-bold">450</p>
+                <p class="text-green-500 text-sm">+5% from last week</p>
+            </div>
+            <div class="text-blue-500">
+                <i class="fas fa-brain text-3xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Abnormalities Detected Card -->
+    <div class="bg-white shadow-lg p-4 border-l-4 border-red-500">
+        <div class="flex justify-between items-start">
+            <div class="text-left">
+                <p class="text-gray-500 text-sm">Abnormalities Detected</p>
+                <p class="text-black text-3xl font-bold">120</p>
+                <p class="text-red-500 text-sm">-3% from last week</p>
+            </div>
+            <div class="text-red-500">
+                <i class="fas fa-exclamation-circle text-3xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Patients Analyzed Card -->
+    <div class="bg-white shadow-lg p-4 border-l-4 border-green-500">
+        <div class="flex justify-between items-start">
+            <div class="text-left">
+                <p class="text-gray-500 text-sm">Patients Analyzed</p>
+                <p class="text-black text-3xl font-bold">300</p>
+                <p class="text-green-500 text-sm">+10% from last week</p>
+            </div>
+            <div class="text-green-500">
+                <i class="fas fa-user-injured text-3xl"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scans Pending Review Card -->
+    <div class="bg-white shadow-lg p-4 border-l-4 border-yellow-500">
+        <div class="flex justify-between items-start">
+            <div class="text-left">
+                <p class="text-gray-500 text-sm">Scans Pending Review</p>
+                <p class="text-black text-3xl font-bold">50</p>
+                <p class="text-red-500 text-sm">-15% from last week</p>
+            </div>
+            <div class="text-yellow-500">
+                <i class="fas fa-clock text-3xl"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Section for detailed analysis (e.g., MRI scan trends, detailed stats) -->
+<div class="mt-10">
+    <div class="bg-white shadow-lg p-4">
+        <h2 class="text-xl font-bold mb-4">Detailed Scan Analysis</h2>
+        <div class="overflow-x-auto">
+            <!-- Example placeholder for charts or tables related to MRI data analysis -->
+            <canvas id="mriAnalysisChart"></canvas>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/dashboard.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% load static tailwind_tags %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}MRI SCAN{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/fontawesome-pro/css/all.min.css' %}">
+    {% tailwind_css %}
+</head>
+<body class="h-screen overflow-hidden bg-gray-100 flex">
+    <!-- Include Sidebar -->
+    {% include 'core/partials/sidebar.html' %}
+
+    <!-- Include Header -->
+    {% include 'core/partials/header.html' %}
+
+    <!-- Main Content Area -->
+    <div class="ml-64 mt-20 p-6 w-[calc(100%-16rem)] h-screen overflow-auto">
+        {% block body %}
+        
+        {% endblock %}
+    </div>
+
+    {% block extra_js %}
+
+    {% endblock %}
+</body>
+</html>

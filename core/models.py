@@ -46,3 +46,20 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.email
+
+
+class TrainingSession(models.Model):
+    """
+    Model to store training session details.
+    """
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    training_file = models.FileField(upload_to='uploads/train_data/')  # Path to the uploaded training data
+    epochs = models.IntegerField(default=10)  # Number of epochs for training
+    batch_size = models.IntegerField(default=32)  # Batch size for training
+    learning_rate = models.DecimalField(max_digits=5, decimal_places=4, default=0.001)  # Learning rate
+    label_info = models.TextField(blank=True, null=True)  # Additional label information if needed
+    created_at = models.DateTimeField(auto_now_add=True)  # Timestamp for when the session was created
+    status = models.CharField(max_length=20, default='pending')  # Status of the training session (e.g., pending, in-progress, completed)
+
+    def __str__(self):
+        return f"Training Session {self.id} by {self.user.email} - Status: {self.status}"

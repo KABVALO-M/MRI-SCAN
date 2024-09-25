@@ -1,9 +1,9 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .forms import TrainingSessionForm
+from .forms import TrainingSessionForm, AnalysisForm, DoctorForm
 from sklearn.model_selection import train_test_split
-from .models import TrainingSession
+from .models import TrainingSession, CustomUser
 import zipfile
 from pathlib import Path
 import os 
@@ -48,7 +48,22 @@ def dashboard_view(request):
 
 @login_required(login_url='/login/')
 def doctors_view(request):
-    return render(request, 'core/doctors.html', {'current_page': 'doctors'})
+    doctors = CustomUser.objects.all()
+    return render(request, 'core/doctors/doctors.html', {
+        'current_page': 'doctors',
+        'doctors': doctors
+    })
+
+def add_doctor_view(request):
+    if request.method == 'POST':
+        form = DoctorForm(request.POST)
+        if form.is_valid():
+            form.save()  # Save the new doctor record to the database
+            return redirect('doctors')  # Redirect to the doctor list page after submission
+    else:
+        form = DoctorForm()
+
+    return render(request, 'core/doctors/add_doctor.html', {'current_page': 'doctors','form': form})
 
 @login_required(login_url='/login/')
 def patients_view(request):
@@ -56,223 +71,83 @@ def patients_view(request):
 
 @login_required(login_url='/login/')
 def analysis_view(request):
-    return render(request, 'core/analysis.html', {'current_page': 'analysis'})
+    # if request.method == 'POST':
+    #     form = AnalysisForm(request.POST, request.FILES)
+    #     if form.is_valid():
+    #         # Get the uploaded image file and confidence threshold
+    #         image_file = form.cleaned_data['image_file']
+    #         confidence_threshold = form.cleaned_data['confidence_threshold']
+
+    #         # Save the uploaded image to the database
+    #         image_upload = ImageUpload(image=image_file)
+    #         image_upload.save()  # Save the image instance to the database
+
+    #         # Get the path to the uploaded image
+    #         image_path = image_upload.image.path  # This gives the full path to the uploaded image file
+    #         tumor_types = load_labels()
+    #         # Call your prediction function
+    #         predicted_index, predicted_tumor_type = predict_image(image_path, tumor_types)
+
+    #         return render(request, 'core/result.html', {
+    #             'prediction_index': predicted_index,
+    #             'prediction_tumor_type': predicted_tumor_type
+    #         })
+    #     else:
+    #         # Handle form errors
+    #         return render(request, 'core/analysis.html', {'form': form})
+
+    # # If GET request, display the empty form
+    # form = AnalysisForm()
+    return render(request, 'core/analysis.html')
 
 @login_required(login_url='/login/')
 def training_view(request):
-    # Define the path where the model will be saved (inside the project base dir)
-    model_dir = os.path.join(settings.BASE_DIR, 'model')
-    model_path = os.path.join(model_dir, 'trained_model.h5')  
-
-
-    # Check if the model directory exists, and if not, create it
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir)
-
-    # Check if the model already exists in the specified path
+    model_path = get_model_path()
     model_exists = os.path.exists(model_path)
 
-
     if request.method == 'POST':
-        # Use the updated TrainingSessionForm
         form = TrainingSessionForm(request.POST, request.FILES)
         
         if form.is_valid():
-             # Save the form data into the model
             training_session = form.save(commit=False)
-
-            # Extract the cleaned data
             training_file = form.cleaned_data['training_file']
             epochs = form.cleaned_data['epochs']
             batch_size = form.cleaned_data['batch_size']
             learning_rate = float(form.cleaned_data['learning_rate'])
             label_info = form.cleaned_data['label_info']
-            print(learning_rate)
             
-
-            # Assign the current user to the training session (assuming a foreign key relationship)
             training_session.user = request.user
-
-            # Save the model to the database
             training_session.save()
-# ===============================================================================================================================================================================
-            # Step 1: Unzip the uploaded zip file
-            if zipfile.is_zipfile(training_file):
-                # Unzip the file to the base extraction directory
-                extract_base_path = unzip_file(training_file)
 
-                # Get the name of the uploaded zip file without the extension
-                zip_filename = os.path.basename(training_file.name)
-                file_name_without_extension = os.path.splitext(zip_filename)[0]
+            extracted_directory, file_name_without_extension = handle_uploaded_file(training_file)
+            existing_labels, dataset_labels = determine_labels(extracted_directory, label_info)
+            print(f"Determined labels: {dataset_labels}")
 
-                # Construct the full extraction path
-                extracted_directory = os.path.join(extract_base_path, file_name_without_extension)
-                print(f"Extracted files to: {extracted_directory}")
-# ==============================================================================================================================================================================
-                # Step 2: Check for subdirectories and set the label
-                # List the directories in the extracted directory
-                subdirectories = [d for d in os.listdir(extracted_directory) if os.path.isdir(os.path.join(extracted_directory, d))]
+            image_data, label_data = load_and_preprocess_images(extracted_directory, dataset_labels, file_name_without_extension)
+            shuffled_images, shuffled_labels = shuffle(image_data, label_data, random_state=101)
 
-                # Determine the labels based on the presence of subdirectories and label_info
-                if not subdirectories and not label_info:
-                    # Use file_name_without_extension as the label if there are no subdirectories and label_info is not provided
-                    labels = [file_name_without_extension]  # Store as a list
-                else:
-                    # Use the provided label_info if it exists or the list of subdirectory names if available
-                    labels = [label_info] if label_info else subdirectories
-                
-                num_classes = len(labels)
+            # Split the dataset
+            training_images, testing_images, training_labels, testing_labels = split_data(shuffled_images, shuffled_labels)
+            print(f"Training images shape: {training_images.shape}, Training labels shape: {training_labels.shape}")
 
-                # Add logic here to save or use the labels as needed
-                print(f"Determined labels: {labels}")
-# =============================================================================================================================================================================
-                # Step 3: Gather images based on the determined labels
-                image_data = []  # List to hold image data
-                label_data = []  # List to hold corresponding labels
-                image_size = 150
+            # Convert labels to categorical
+            training_labels = convert_labels_to_categorical(training_labels, existing_labels)
+            testing_labels = convert_labels_to_categorical(testing_labels, existing_labels)
 
-                # Check if there are subdirectories or not
-                if subdirectories:
-                    # Case when there are subdirectories
-                    for label in labels:
-                        folder_path = os.path.join(extracted_directory, label)
-                        if os.path.exists(folder_path):
-                            for img_file in os.listdir(folder_path):
-                                print(img_file)  # For debugging: prints the image file name
-                                img_path = os.path.join(folder_path, img_file)
-                                img = cv2.imread(img_path)
-                                if img is not None:
-                                    img = cv2.resize(img, (image_size, image_size))
-                                    image_data.append(img)
-                                    label_data.append(label)
-                        else:
-                            print(f"Warning: Directory {folder_path} does not exist.")
-                else:
-                    # Case when there are no subdirectories
-                    # Collect images directly from the extracted directory
-                    for img_file in os.listdir(extracted_directory):
-                        print(img_file)  # For debugging: prints the image file name
-                        img_path = os.path.join(extracted_directory, img_file)
-                        img = cv2.imread(img_path)
-                        if img is not None:
-                            img = cv2.resize(img, (image_size, image_size))
-                            image_data.append(img)
-                            # Use the file name or the parent directory as a single label
-                            label_data.append(file_name_without_extension)
+            # Load or create the model
+            print(len(dataset_labels))
+            model = create_or_load_model(model_exists, learning_rate, len(dataset_labels))
 
-                # Convert to numpy arrays
-                image_array = np.array(image_data)        # Renamed from train_images to image_array
-                label_array = np.array(label_data)        # Renamed from train_labels to label_array
+            # Train the model
+            train_model(model, training_images, training_labels, epochs)
 
-# ==============================================================================================================================================================================
-                # Step 4: Shuffle the dataset
-                shuffled_images, shuffled_labels = shuffle(image_array, label_array, random_state=101)
+            # Save the trained model
+            save_model(model)
 
-                # Check the shape of the training data
-                print(f"Shuffled train_images shape: {shuffled_images.shape}")
-# ==============================================================================================================================================================================
-                # Step 5: Perform train-test split
-                training_images, testing_images, training_labels, testing_labels = train_test_split(
-                    shuffled_images, 
-                    shuffled_labels, 
-                    test_size=0.1, 
-                    random_state=101
-                )
+            # Save Labels
+            # save_labels(dataset_labels)
 
-                # Check the shape of the split data
-                print(f"Training images shape: {training_images.shape}, Training labels shape: {training_labels.shape}")
-                print(f"Testing images shape: {testing_images.shape}, Testing labels shape: {testing_labels.shape}")
-# ==============================================================================================================================================================================
-                # Convert labels to categorical format
-                # Create new label arrays to convert labels to integers
-                training_labels_new = []
-                for label in training_labels:
-                    training_labels_new.append(labels.index(label))  # Find index of label in the labels list
-                training_labels = training_labels_new
-                training_labels = tf.keras.utils.to_categorical(training_labels)  # Convert to categorical
-
-                testing_labels_new = []
-                for label in testing_labels:
-                    testing_labels_new.append(labels.index(label))  # Find index of label in the labels list
-                testing_labels = testing_labels_new
-                testing_labels = tf.keras.utils.to_categorical(testing_labels)  # Convert to categorical
-
-                # Check the shapes of the final data
-                print(f"Final training images shape: {training_images.shape}, Training labels shape: {training_labels.shape}")
-                print(f"Final testing images shape: {testing_images.shape}, Testing labels shape: {testing_labels.shape}")
-
-# ==============================================================================================================================================================================
-            if model_exists:
-                print("Continuing training on the existing model...")
-                # Load and recompile the model with a new optimizer
-                from tensorflow.keras.models import load_model # type: ignore
-                print("Continuing training on the existing model...")
-                model = load_model(model_path)
-
-                # Recompile the model with the same loss function and a new optimizer instance
-                model.compile(optimizer=Adam(learning_rate=learning_rate), loss='categorical_crossentropy', metrics=['accuracy'])
-            else:
-                from tensorflow.keras.models import Sequential # type: ignore
-                from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout # type: ignore
-                # Define the model
-                model = Sequential()
-
-                # Adding convolutional layers
-                model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(150, 150, 3)))  # Input shape for RGB images
-                model.add(Conv2D(64, (3, 3), activation='relu'))
-                model.add(MaxPooling2D(2, 2))
-                model.add(Dropout(0.3))
-
-                model.add(Conv2D(64, (3, 3), activation='relu'))
-                model.add(Conv2D(64, (3, 3), activation='relu'))
-                model.add(Dropout(0.3))
-                model.add(MaxPooling2D(2, 2))
-
-                model.add(Dropout(0.3))
-                model.add(Conv2D(128, (3, 3), activation='relu'))
-                model.add(Conv2D(128, (3, 3), activation='relu'))
-                model.add(Conv2D(128, (3, 3), activation='relu'))
-                model.add(MaxPooling2D(2, 2))
-                model.add(Dropout(0.3))
-
-                model.add(Conv2D(128, (3, 3), activation='relu'))
-                model.add(Conv2D(256, (3, 3), activation='relu'))
-                model.add(MaxPooling2D(2, 2))
-                model.add(Dropout(0.3))
-
-                # Flattening the output before feeding into Dense layers
-                model.add(Flatten())
-                model.add(Dense(512, activation='relu'))
-                model.add(Dense(512, activation='relu'))
-                model.add(Dropout(0.3))
-
-                # Output layer for classification
-                model.add(Dense(num_classes, activation='softmax'))  # 4 output classes
-
-                # # Compile the model
-                model.compile(optimizer='adam', 
-                            loss='categorical_crossentropy', 
-                            metrics=['accuracy'])
-
-                # Summary of the model
-                model.summary()
-
-                print("Starting new model training...")
-               
-            # Step 7: Train the model
-            history = model.fit(
-                training_images, training_labels, 
-                epochs=epochs, 
-                validation_split=0.1
-            )
-
-            # Save the model after training
-            model.save(model_path)
-
-            print("Model training completed and saved.")
-            # Redirect to the dashboard or relevant page after processing
             return redirect('dashboard')
-
     else:
         form = TrainingSessionForm()
 
@@ -288,8 +163,6 @@ def settings_view(request):
 @login_required(login_url='/login/')
 def profile_view(request):
     return render(request, 'core/profile.html', {'current_page': 'profile'})
-
-
 
 
 
@@ -325,3 +198,204 @@ def get_image_directories(base_dir='uploads/extracted/'):
             labels[relative_dir] = root  # Store the path associated with its label
 
     return labels
+
+# Define the path where the model will be saved (inside the project base dir)
+def get_model_path():
+    model_dir = os.path.join(settings.BASE_DIR, 'model')
+    model_path = os.path.join(model_dir, 'trained_model.keras')
+    
+    # Check if the model directory exists, and if not, create it
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+    
+    return model_path
+
+def handle_uploaded_file(training_file):
+    """Unzip the uploaded zip file and return the extraction path."""
+    if zipfile.is_zipfile(training_file):
+        extract_base_path = unzip_file(training_file)
+        zip_filename = os.path.basename(training_file.name)
+        file_name_without_extension = os.path.splitext(zip_filename)[0]
+        extracted_directory = os.path.join(extract_base_path, file_name_without_extension)
+        print(f"Extracted files to: {extracted_directory}")
+        return extracted_directory, file_name_without_extension
+    return None, None
+
+def determine_labels(extracted_directory, label_info):
+    """Determine labels based on subdirectories and provided label info."""
+    subdirectories = [d for d in os.listdir(extracted_directory) if os.path.isdir(os.path.join(extracted_directory, d))]
+    existing_labels = load_labels()
+    print("Existing Labels: ",existing_labels)
+    # If no subdirectories and no label_info, return the directory name as a single label
+    if not subdirectories and not label_info:
+        dataset_labels = [os.path.basename(extracted_directory)]
+    else:
+        dataset_labels = [label_info] if label_info else subdirectories
+    
+    # Check if each dataset label exists in existing labels, if not, append it
+    for label in dataset_labels:
+        if label not in existing_labels:
+            existing_labels.append(label)
+    
+    return existing_labels, dataset_labels
+
+def load_and_preprocess_images(extracted_directory, labels, file_name_without_extension):
+    """Load and preprocess images from the extracted directory based on labels."""
+    image_data = []
+    label_data = []
+    image_size = 150
+
+    # Check if there are subdirectories
+    subdirectories = [d for d in os.listdir(extracted_directory) if os.path.isdir(os.path.join(extracted_directory, d))]
+
+    if subdirectories:
+        # Case when there are subdirectories
+        for label in labels:
+            folder_path = os.path.join(extracted_directory, label)
+            if os.path.exists(folder_path):
+                for img_file in os.listdir(folder_path):
+                    print(img_file)  # For debugging: prints the image file name
+                    img_path = os.path.join(folder_path, img_file)
+                    img = cv2.imread(img_path)
+                    if img is not None:
+                        img = cv2.resize(img, (image_size, image_size))
+                        image_data.append(img)
+                        label_data.append(label)
+            else:
+                print(f"Warning: Directory {folder_path} does not exist.")
+    else:
+        # Case when there are no subdirectories
+        # Collect images directly from the extracted directory
+        for img_file in os.listdir(extracted_directory):
+            print(img_file)  # For debugging: prints the image file name
+            img_path = os.path.join(extracted_directory, img_file)
+            img = cv2.imread(img_path)
+            if img is not None:
+                img = cv2.resize(img, (image_size, image_size))
+                image_data.append(img)
+                # Use the file name or the parent directory as a single label
+                label_data.append(file_name_without_extension)
+
+    return np.array(image_data), np.array(label_data)
+
+def split_data(shuffled_images, shuffled_labels):
+    """Perform train-test split on the dataset."""
+    return train_test_split(shuffled_images, shuffled_labels, test_size=0.1, random_state=101)
+
+def convert_labels_to_categorical(labels, combined_labels):
+    """Convert label arrays to categorical format."""
+    label_indices = [combined_labels.index(label) for label in labels]
+    print(label_indices)
+    return tf.keras.utils.to_categorical(label_indices)
+
+def create_or_load_model(model_exists, learning_rate, num_classes):
+    """Create a new model or load an existing one."""
+    from tensorflow.keras.models import load_model, Sequential # type: ignore
+    from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout # type: ignore
+    
+    model_path = get_model_path()
+    if model_exists:
+        model = load_model(model_path)
+         # Set appropriate loss function
+        if num_classes == 2:
+            loss = 'binary_crossentropy'
+        else:
+            loss = 'categorical_crossentropy'
+        
+        model.compile(optimizer='adam', loss=loss, metrics=['accuracy'])
+    else:
+        model = Sequential()
+        # Adding convolutional layers
+        model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(150, 150, 3)))  # Input shape for RGB images
+        model.add(Conv2D(64, (3, 3), activation='relu'))
+        model.add(MaxPooling2D(2, 2))
+        model.add(Dropout(0.3))
+
+        model.add(Conv2D(64, (3, 3), activation='relu'))
+        model.add(Conv2D(64, (3, 3), activation='relu'))
+        model.add(Dropout(0.3))
+        model.add(MaxPooling2D(2, 2))
+
+        model.add(Dropout(0.3))
+        model.add(Conv2D(128, (3, 3), activation='relu'))
+        model.add(Conv2D(128, (3, 3), activation='relu'))
+        model.add(Conv2D(128, (3, 3), activation='relu'))
+        model.add(MaxPooling2D(2, 2))
+        model.add(Dropout(0.3))
+
+        model.add(Conv2D(128, (3, 3), activation='relu'))
+        model.add(Conv2D(256, (3, 3), activation='relu'))
+        model.add(MaxPooling2D(2, 2))
+        model.add(Dropout(0.3))
+
+        # Flattening the output before feeding into Dense layers
+        model.add(Flatten())
+        model.add(Dense(512, activation='relu'))
+        model.add(Dense(512, activation='relu'))
+        model.add(Dropout(0.3))
+
+        # Output layer for classification
+        model.add(Dense(num_classes, activation='softmax'))  # 4 output classes
+
+
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+        # Summary of the model
+        model.summary()
+
+        print("Starting new model training...")
+    
+    return model
+
+def train_model(model, training_images, training_labels, epochs):
+    """Train the model with the training dataset."""
+    return model.fit(training_images, training_labels, epochs=epochs, validation_split=0.1)
+
+def save_model(model):
+    """Save the trained model."""
+    model_path = get_model_path()
+    model.save(model_path)
+    print("Model training completed and saved.")
+
+# def save_labels(labels, filename='labels.txt'):
+#     """Save the labels to a file."""
+#     with open(filename, 'a') as file:  # Open in append mode
+#         for label in labels:
+#             file.write(f"{label}\n")
+
+def load_labels(filename='labels.txt'):
+    """Load labels from a file."""
+    if os.path.exists(filename):
+        with open(filename, 'r') as file:
+            return [line.strip() for line in file.readlines()]
+    return []
+
+
+def predict_image(image_path, tumor_types):
+    model_path = get_model_path()
+    model_exists = os.path.exists(model_path)
+    if model_exists:
+        from tensorflow.keras.models import load_model # type: ignore
+        import cv2
+        import numpy as np
+
+        model = load_model(model_path)
+
+        # Read the image from the file
+        img = cv2.imread(image_path)
+
+        # Resize the image to the input size required by your model (example: 150x150)
+        img_resized = cv2.resize(img, (150, 150))
+        img_array = np.array(img_resized)
+        img_array = np.expand_dims(img_array, axis=0)
+
+        # Make a prediction using the model
+        prediction = model.predict(img_array)
+
+        # Assuming binary classification or multi-class classification:
+        predicted_index = np.argmax(prediction, axis=1)[0]  # Get the index of the predicted class
+
+        # Return the predicted class index and its corresponding tumor type
+        predicted_tumor_type = tumor_types[predicted_index]
+
+        return predicted_index, predicted_tumor_type

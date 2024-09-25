@@ -1,0 +1,51 @@
+{% extends 'core/base_layout.html' %}
+{% load static %}
+{% block body %}
+<div class="container mx-auto py-8">
+    <h1 class="text-3xl font-bold mb-6">Upload Image for Analysis</h1>
+
+    <form action="{% url 'analysis' %}" method="POST" enctype="multipart/form-data" class="space-y-6">
+        {% csrf_token %}
+        
+        <div class="w-full px-5 py-10 bg-gray-100 rounded-lg shadow-lg text-center">
+            <div class="mb-4">
+                <!-- Cloud Icon and Drag-and-Drop Area for Image Upload -->
+                <div class="flex items-center justify-center w-full">
+                    <label for="file-upload" class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <svg aria-hidden="true" class="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V7m5 5V4m5 7v8m5-5H2"></path>
+                            </svg>
+                            <p id="file-upload-text" class="mb-2 text-sm text-gray-500"><span class="font-semibold">Click to upload</span> or drag and drop</p>
+                            <p class="text-xs text-gray-500">JPG, PNG, BMP (Max. 5MB)</p>
+                        </div>
+                        <!-- File Input -->
+                        <input id="file-upload" name="image_file" type="file" class="hidden" required>
+                    </label>
+                </div>
+                {% if form.image_file.errors %}
+                    <p class="text-red-500 text-sm mt-2">{{ form.image_file.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Confidence Threshold -->
+            <div class="mt-6">
+                <label for="confidence_threshold" class="block text-sm font-medium text-gray-700">Confidence Threshold</label>
+                {{ form.confidence_threshold }}
+                {% if form.confidence_threshold.errors %}
+                    <p class="text-red-500 text-sm">{{ form.confidence_threshold.errors }}</p>
+                {% endif %}
+            </div>
+
+            <!-- Submit Button -->
+            <div class="mt-6">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 focus:outline-none focus:bg-blue-700">Submit for Analysis</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    <script src="{% static 'js/analysis.js' %}" defer></script>
+{% endblock %}

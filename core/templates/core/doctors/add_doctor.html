@@ -1,0 +1,91 @@
+{% extends "core/base_layout.html" %}
+
+{% block body %}
+  <div class="">
+    <h2 class="text-2xl font-bold mb-6">Add a New Doctor</h2>
+
+    <div class="bg-white shadow-md rounded-lg px-8 py-6 flex justify-start">
+      <form method="post" class="space-y-6 w-1/2">
+        {% csrf_token %}
+
+        <!-- Email Field (Full Row) -->
+        <div class="mb-4">
+          {{ form.email.label_tag }}
+          {{ form.email }}
+          {% if form.email.errors %}
+              <p class="text-red-600 text-sm">{{ form.email.errors }}</p>
+          {% endif %}
+        </div>
+
+        <!-- First Name and Last Name (Two fields on one row) -->
+        <div class="mb-4 flex space-x-4">
+          <div class="w-1/2">
+            {{ form.first_name.label_tag }}
+            {{ form.first_name }}
+            {% if form.first_name.errors %}
+                <p class="text-red-600 text-sm">{{ form.first_name.errors }}</p>
+            {% endif %}
+          </div>
+          <div class="w-1/2">
+            {{ form.last_name.label_tag }}
+            {{ form.last_name }}
+            {% if form.last_name.errors %}
+                <p class="text-red-600 text-sm">{{ form.last_name.errors }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Phone Number and SSN (Two fields on one row) -->
+        <div class="mb-4 flex space-x-4">
+          <div class="w-1/2">
+            {{ form.phone_number.label_tag }}
+            {{ form.phone_number }}
+            {% if form.phone_number.errors %}
+                <p class="text-red-600 text-sm">{{ form.phone_number.errors }}</p>
+            {% endif %}
+          </div>
+          <div class="w-1/2">
+            {{ form.ssn.label_tag }}
+            {{ form.ssn }}
+            {% if form.ssn.errors %}
+                <p class="text-red-600 text-sm">{{ form.ssn.errors }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="mb-4">
+          {{ form.hospital.label_tag }}
+          {{ form.hospital }}  <!-- This will now be a dropdown -->
+          {% if form.hospital.errors %}
+              <p class="text-red-600 text-sm">{{ form.hospital.errors }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Password Fields (Full Row each) -->
+        <div class="mb-4">
+          {{ form.password1.label_tag }}
+          {{ form.password1 }}
+          {% if form.password1.errors %}
+              <p class="text-red-600 text-sm">{{ form.password1.errors }}</p>
+          {% endif %}
+        </div>
+        
+        <div class="mb-4">
+          {{ form.password2.label_tag }}
+          {{ form.password2 }}
+          {% if form.password2.errors %}
+              <p class="text-red-600 text-sm">{{ form.password2.errors }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Submit Button at the bottom left -->
+        <div class="flex justify-start">
+          <button type="submit" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+            Add Doctor
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+{% endblock %}

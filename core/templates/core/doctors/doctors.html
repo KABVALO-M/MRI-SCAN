@@ -1,0 +1,54 @@
+{% extends 'core/base_layout.html' %}
+{% load static %}
+{% block body %}
+<div>
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold mb-4 text-gray-700">Doctors</h1>
+        <!-- Button to Add New Doctor in the same line as the heading -->
+        <a href="{% url 'add_doctor' %}" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:bg-green-700">Add New Doctor</a>
+    </div>
+
+    <!-- Doctors Table -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+            <thead>
+                <tr class="bg-gray-200 text-gray-700 uppercase text-sm leading-normal">
+                    <th class="py-4 px-6 text-left">Email</th>
+                    <th class="py-4 px-6 text-left">First Name</th>
+                    <th class="py-4 px-6 text-left">Last Name</th>
+                    <th class="py-4 px-6 text-left">SSN</th>
+                    <th class="py-4 px-6 text-left">Phone Number</th>
+                    <th class="py-4 px-6 text-left">Hospital</th>
+                    <th class="py-4 px-6 text-left">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-700 text-sm">
+                {% for doctor in doctors %}
+                <tr class="border-b border-gray-200 hover:bg-gray-100 transition duration-300">
+                    <td class="py-4 px-6">{{ doctor.email }}</td>
+                    <td class="py-4 px-6">{{ doctor.first_name }}</td>
+                    <td class="py-4 px-6">{{ doctor.last_name }}</td>
+                    <td class="py-4 px-6">{{ doctor.ssn }}</td>
+                    <td class="py-4 px-6">{{ doctor.phone_number }}</td>
+                    <td class="py-4 px-6">{{ doctor.hospital.name }}</td>
+                    <td class="py-4 px-6 flex space-x-2">
+                        <a href="#" class="text-blue-600 hover:text-blue-800 flex items-center space-x-1">
+                            <i class="fas fa-edit"></i> 
+                            <span>Edit</span>
+                        </a>
+                        <a href="#" class="text-red-600 hover:text-red-800 flex items-center space-x-1">
+                            <i class="fas fa-trash-alt"></i> 
+                            <span>Delete</span>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="py-4 px-6 text-center">No doctors found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -67,6 +67,20 @@
                     </a>
                 </li>
 
+                <!-- Hospitals Menu Item (Visible to Superusers) -->
+                {% if user.is_superuser %}
+                <li class="w-full mb-2">
+                    <a href="{% url 'hospitals' %}" class="w-full p-4 flex items-center space-x-4 text-gray-300 
+                        {% if current_page == 'hospitals' %} 
+                            bg-white bg-opacity-20 text-white 
+                        {% endif %} 
+                        hover:bg-white hover:bg-opacity-20 hover:text-white rounded transition-all ease-in-out duration-200">
+                        <i class="fa-thin fa-hospital text-2xl"></i>
+                        <span class="text-lg">Hospitals</span>
+                    </a>
+                </li>
+                {% endif %}
+
                 <!-- Training Menu Item (Visible to Superusers) -->
                 {% if user.is_superuser %}
                 <li class="w-full mb-2">

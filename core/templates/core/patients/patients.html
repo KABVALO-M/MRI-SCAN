@@ -24,7 +24,7 @@
                 </tr>
             </thead>
             <tbody class="text-gray-700 text-sm">
-                <!-- Loop through patients passed from the view -->
+                <!-- Loop through paginated patients -->
                 {% for patient in patients %}
                 <tr class="border-b border-gray-200 hover:bg-gray-100 transition duration-300">
                     <td class="py-4 px-6">{{ patient.patient_code }}</td>
@@ -35,11 +35,13 @@
                     <td class="py-4 px-6">{{ patient.phone_number }}</td>
                     <td class="py-4 px-6">{{ patient.email }}</td>
                     <td class="py-4 px-6 flex space-x-2">
-                        <a href="" class="text-blue-600 hover:text-blue-800 flex items-center space-x-1">
+                        <a href="{% url 'edit_patient' patient.id %}" class="text-blue-600 hover:text-blue-800 flex items-center space-x-1">
                             <i class="fas fa-edit"></i> 
                             <span>Edit</span>
                         </a>
-                        <a href="" class="text-red-600 hover:text-red-800 flex items-center space-x-1">
+                        <a href="#" 
+                           class="text-red-600 hover:text-red-800 flex items-center space-x-1 delete-link" 
+                           data-patient-id="{{ patient.id }}">
                             <i class="fas fa-trash-alt"></i> 
                             <span>Delete</span>
                         </a>
@@ -53,5 +55,68 @@
             </tbody>
         </table>
     </div>
+
+    <!-- Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden flex justify-center items-center z-50">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-1/3">
+            <h2 class="text-xl font-bold mb-4">Confirm Deletion</h2>
+            <p>Are you sure you want to delete this patient?</p>
+            <div class="flex justify-end mt-4">
+                <button id="cancelButton" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">Cancel</button>
+                <form id="deleteForm" method="POST" action="" class="ml-2">
+                    {% csrf_token %}
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="mt-6">
+        <div class="flex justify-between items-center">
+            <!-- Previous Page Button -->
+            {% if patients.has_previous %}
+            <a href="?page={{ patients.previous_page_number }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Previous</a>
+            {% else %}
+            <span class="px-4 py-2 bg-gray-100 text-gray-400 rounded">Previous</span>
+            {% endif %}
+
+            <!-- Current Page Indicator -->
+            <p>Page {{ patients.number }} of {{ patients.paginator.num_pages }}</p>
+
+            <!-- Next Page Button -->
+            {% if patients.has_next %}
+            <a href="?page={{ patients.next_page_number }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Next</a>
+            {% else %}
+            <span class="px-4 py-2 bg-gray-100 text-gray-400 rounded">Next</span>
+            {% endif %}
+        </div>
+    </div>
 </div>
+
+
 {% endblock %}
+{% block extra_js %}
+    <script src="{% static 'js/dashboard.js' %}" defer></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const deleteLinks = document.querySelectorAll(".delete-link");
+            const deleteModal = document.getElementById("deleteModal");
+            const deleteForm = document.getElementById("deleteForm");
+            const cancelButton = document.getElementById("cancelButton");
+    
+            deleteLinks.forEach(link => {
+                link.addEventListener("click", function(event) {
+                    event.preventDefault();
+                    const patientId = this.dataset.patientId;
+                    deleteForm.action = `/patients/delete/${patientId}/`; // Adjust the URL as needed
+                    deleteModal.classList.remove("hidden");
+                });
+            });
+    
+            cancelButton.addEventListener("click", function() {
+                deleteModal.classList.add("hidden");
+            });
+        });
+    </script>
+{% endblock %}  

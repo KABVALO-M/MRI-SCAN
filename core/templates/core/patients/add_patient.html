@@ -1,5 +1,5 @@
 {% extends "core/base_layout.html" %}
-
+{% load static %}
 {% block body %}
   <div class="">
     <h2 class="text-3xl font-bold mb-4 text-gray-700">Add a New Patient</h2>
@@ -92,3 +92,6 @@
   </div>
 
 {% endblock %}
+{% block extra_js %}
+    <script src="{% static 'js/dashboard.js' %}" defer></script>
+{% endblock %}  

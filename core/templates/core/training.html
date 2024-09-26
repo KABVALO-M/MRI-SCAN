@@ -1,7 +1,7 @@
 {% extends 'core/base_layout.html' %}
 {% load static %}
 {% block body %}
-<div class="container mx-auto py-8">
+<div>
     <h1 class="text-3xl font-bold mb-6">Start a New Training Session</h1>
 
     <form action="{% url 'training' %}" method="POST" enctype="multipart/form-data" class="space-y-6">
@@ -75,8 +75,21 @@
     </form>
 </div>
 
+
+<!-- Loading Modal -->
+<div id="loading-modal" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+    <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+        <svg class="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <p class="text-lg font-semibold">Training</p>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
     <script src="{% static 'js/training.js' %}" defer></script>
+    <script src="{% static 'js/dashboard.js' %}" defer></script>
 {% endblock %}

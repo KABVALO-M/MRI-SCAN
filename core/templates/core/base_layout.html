@@ -16,15 +16,27 @@
     <!-- Include Header -->
     {% include 'core/partials/header.html' %}
 
+    <div class="fixed top-0 left-0 right-0 z-50">
+        {% if messages %}
+            <div class="container mx-auto px-6 py-2">
+                {% for message in messages %}
+                    <div class="mb-4 p-4 rounded-lg text-white {% if message.tags == 'error' %}bg-red-600{% elif message.tags == 'success' %}bg-green-600{% else %}bg-blue-600{% endif %} message">
+                        <span>{{ message }}</span>
+                    </div>  
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
     <!-- Main Content Area -->
-    <div class="ml-64 mt-20 p-6 w-[calc(100%-16rem)] h-screen overflow-auto">
+    <div class="ml-64 mt-20 p-6 pb-5 w-[calc(100%-16rem)] overflow-auto">
         {% block body %}
         
         {% endblock %}
     </div>
 
     {% block extra_js %}
-
+        <script src="{% static 'js/dashboard.js' %}" defer></script>
     {% endblock %}
 </body>
 </html>

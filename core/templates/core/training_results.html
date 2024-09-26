@@ -1,0 +1,107 @@
+{% extends 'core/base_layout.html' %}
+{% load static %}
+{% block body %}
+<div>
+    <h1 class="text-3xl font-bold mb-6">Training Results</h1>
+
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <canvas id="trainingChart"></canvas>
+        <!-- Add a note for clarity -->
+        <p class="mt-4 text-gray-600">
+            <strong>Note:</strong> The left y-axis represents <em>Loss Values</em> (lower is better), 
+            while the right y-axis represents <em>Accuracy</em> as a percentage (higher is better).
+        </p>
+    </div>
+
+    <!-- Include Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // Pass the history data to JavaScript safely
+        const history = {{ history|safe }};
+
+        const ctx = document.getElementById('trainingChart').getContext('2d');
+
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array.from({length: history.loss.length}, (_, i) => `Epoch ${i + 1}`),  // Create labels for each epoch
+                datasets: [
+                    {
+                        label: 'Training Loss',
+                        data: history.loss,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        yAxisID: 'y',  // Use the primary y-axis for loss
+                    },
+                    {
+                        label: 'Validation Loss',
+                        data: history.val_loss,
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        yAxisID: 'y',  // Use the primary y-axis for validation loss
+                    },
+                    {
+                        label: 'Training Accuracy',
+                        data: history.accuracy.map(acc => acc * 100),  // Convert to percentage
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        yAxisID: 'y1',  // Use the secondary y-axis for accuracy
+                    },
+                    {
+                        label: 'Validation Accuracy',
+                        data: history.val_accuracy.map(valAcc => valAcc * 100),  // Convert to percentage
+                        borderColor: 'rgba(255, 206, 86, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        yAxisID: 'y1',  // Use the secondary y-axis for validation accuracy
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {  // Primary y-axis for loss
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Loss Value'
+                        },
+                    },
+                    y1: {  // Secondary y-axis for accuracy
+                        beginAtZero: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Accuracy (%)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%'; // Add percentage sign to the y-axis ticks
+                            }
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Epochs'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    </script>
+</div>
+{% endblock %}
+{% block extra_js %}
+        <script src="{% static 'js/dashboard.js' %}" defer></script>
+{% endblock %}

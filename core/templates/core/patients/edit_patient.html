@@ -1,0 +1,96 @@
+{% extends "core/base_layout.html" %}
+{% load static %}
+{% block body %}
+  <div class="">
+    <h2 class="text-3xl font-bold mb-4 text-gray-700">Edit Patient Details</h2>
+
+    <div class="bg-white shadow-md rounded-lg px-8 py-6 flex justify-start">
+      <form method="post" class="space-y-6 w-full max-w-3xl">
+        {% csrf_token %}
+
+        <!-- First Name and Last Name (Two fields on one row) -->
+        <div class="mb-4 flex space-x-4">
+          <div class="w-1/2">
+            {{ form.first_name.label_tag }}
+            {{ form.first_name }}
+            {% if form.first_name.errors %}
+                <p class="text-red-600 text-sm">{{ form.first_name.errors }}</p>
+            {% endif %}
+          </div>
+          <div class="w-1/2">
+            {{ form.last_name.label_tag }}
+            {{ form.last_name }}
+            {% if form.last_name.errors %}
+                <p class="text-red-600 text-sm">{{ form.last_name.errors }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Phone Number and Age (Two fields on one row) -->
+        <div class="mb-4 flex space-x-4">
+          <div class="w-1/2">
+            {{ form.phone_number.label_tag }}
+            {{ form.phone_number }}
+            {% if form.phone_number.errors %}
+                <p class="text-red-600 text-sm">{{ form.phone_number.errors }}</p>
+            {% endif %}
+          </div>
+          <div class="w-1/2">
+            {{ form.age.label_tag }}
+            {{ form.age }}
+            {% if form.age.errors %}
+                <p class="text-red-600 text-sm">{{ form.age.errors }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Email Field (Full Row) -->
+        <div class="mb-4">
+            {{ form.email.label_tag }}
+            {{ form.email }}
+            {% if form.email.errors %}
+                <p class="text-red-600 text-sm">{{ form.email.errors }}</p>
+            {% endif %}
+          </div>
+
+        <!-- Address (Full Row) -->
+        <div class="mb-4">
+          {{ form.physical_address.label_tag }}
+          {{ form.physical_address }}
+          {% if form.physical_address.errors %}
+              <p class="text-red-600 text-sm">{{ form.physical_address.errors }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Gender and Insurance Number (Two fields on one row) -->
+        <div class="mb-4 flex space-x-4">
+          <div class="w-1/2">
+            {{ form.gender.label_tag }}
+            {{ form.gender }}
+            {% if form.gender.errors %}
+                <p class="text-red-600 text-sm">{{ form.gender.errors }}</p>
+            {% endif %}
+          </div>
+          <div class="w-1/2">
+            {{ form.insurance_number.label_tag }}
+            {{ form.insurance_number }}
+            {% if form.insurance_number.errors %}
+                <p class="text-red-600 text-sm">{{ form.insurance_number.errors }}</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Submit Button at the bottom left -->
+        <div class="flex justify-start">
+          <button type="submit" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
+            Update Patient
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+{% endblock %}
+{% block extra_js %}
+    <script src="{% static 'js/dashboard.js' %}" defer></script>
+{% endblock %}  

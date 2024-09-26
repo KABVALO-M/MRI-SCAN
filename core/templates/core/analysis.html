@@ -1,8 +1,7 @@
 {% extends 'core/base_layout.html' %}
 {% load static %}
-
 {% block body %}
-<div class="container mx-auto py-8">
+<div>
     <h1 class="text-3xl font-bold mb-6">Patient Information and Image Upload</h1>
 
     <!-- Responsive Form Layout -->
@@ -85,4 +84,5 @@
     const patients = JSON.parse('{{ patients|safe|escapejs }}');
 </script>
 <script src="{% static 'js/analysis.js' %}" defer></script>
+<script src="{% static 'js/dashboard.js' %}" defer></script>
 {% endblock %}

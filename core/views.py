@@ -1,12 +1,13 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .forms import TrainingSessionForm, AnalysisForm, DoctorForm, PatientForm
+from .forms import TrainingSessionForm, AnalysisForm, DoctorForm, PatientForm, HospitalForm
 from sklearn.model_selection import train_test_split
-from .models import TrainingSession, CustomUser,  Patient, Analysis
+from .models import TrainingSession, CustomUser,  Patient, Analysis, Hospital
 import zipfile
 from pathlib import Path
 import os 
+import json
 import cv2
 import numpy as np
 from sklearn.utils import shuffle
@@ -15,82 +16,201 @@ import keras
 from tensorflow.keras.optimizers import Adam # type: ignore
 from django.conf import settings 
 from django.core import serializers
+from django.core.paginator import Paginator
+from django.shortcuts import render, get_object_or_404
+from time import sleep
+from django.http import JsonResponse
+from tensorflow.keras.callbacks import History # type: ignore
+from django.contrib.auth.decorators import user_passes_test
+from django.contrib import messages
+
+
+def superuser_check(user):
+    return user.is_superuser
+
 
 # Login view
 def login_view(request):
     if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
-
-        # Authenticate the user
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            # Log the user in
             login(request, user)
-            # Redirect to the home page or dashboard after successful login
+            messages.success(request, 'You have successfully logged in.')
             return redirect('dashboard')
         else:
-            # Invalid credentials, show an error
-            error = "Invalid username or password."
-            return render(request, 'core/login.html', {'error': error})
+            messages.error(request, 'Invalid username or password.')
+            return render(request, 'core/login.html')
 
     return render(request, 'core/login.html')
 
 @login_required
 def logout_view(request):
     logout(request)
+    messages.success(request, 'You have successfully logged out.')
     return redirect('login')
 
 # Dashboard view
 @login_required(login_url='/login/')
 def dashboard_view(request):
-    return render(request, 'core/dashboard.html', {'current_page': 'dashboard'})
+    analysis_list = Analysis.objects.all().order_by('-analysis_date') 
+
+    paginator = Paginator(analysis_list, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number) 
+
+    total_doctors = CustomUser.objects.filter(is_staff=True).count()  
+    total_patients = Patient.objects.count() 
+    total_analyses = Analysis.objects.count() 
+    total_patients_analyzed = Patient.objects.filter(analyses__isnull=False).distinct().count() 
+
+    context = {
+        'current_page': 'dashboard',
+        'page_obj': page_obj,  
+        'total_doctors': total_doctors,
+        'total_patients': total_patients,
+        'total_analyses': total_analyses,
+        'total_patients_analyzed': total_patients_analyzed,
+    }
+    
+    return render(request, 'core/dashboard.html', context)
 
 @login_required(login_url='/login/')
+@user_passes_test(superuser_check)
 def doctors_view(request):
-    doctors = CustomUser.objects.all()
+    doctors_list = CustomUser.objects.all()
+    paginator = Paginator(doctors_list, 10)  # Show 10 doctors per page
+    page_number = request.GET.get('page')
+    doctors = paginator.get_page(page_number)
+
     return render(request, 'core/doctors/doctors.html', {
         'current_page': 'doctors',
         'doctors': doctors
     })
 
 @login_required(login_url='/login/')
+@user_passes_test(superuser_check)
 def add_doctor_view(request):
     if request.method == 'POST':
         form = DoctorForm(request.POST)
         if form.is_valid():
-            form.save()  # Save the new doctor record to the database
-            return redirect('doctors')  # Redirect to the doctor list page after submission
+            form.save()
+            messages.success(request, 'Doctor added successfully.') 
+            return redirect('doctors')
+        else:
+            messages.error(request, 'Please correct the errors below.') 
     else:
         form = DoctorForm()
 
-    return render(request, 'core/doctors/add_doctor.html', {'current_page': 'doctors','form': form})
+    return render(request, 'core/doctors/add_doctor.html', {'current_page': 'doctors', 'form': form})
+
+@login_required(login_url='/login/')
+@user_passes_test(superuser_check)
+def edit_doctor_view(request, doctor_id):
+    doctor = get_object_or_404(CustomUser, id=doctor_id)
+
+    if request.method == 'POST':
+        form = DoctorForm(request.POST, instance=doctor)
+        if form.is_valid():
+            new_password = form.cleaned_data.get('password1')
+            if new_password:  
+                doctor.set_password(new_password)  
+            form.save()
+            messages.success(request, 'Doctor details updated successfully.') 
+            return redirect('doctors')  
+        else:
+            messages.error(request, 'Please correct the errors below.') 
+    else:
+        form = DoctorForm(instance=doctor)
+
+    context = {
+        'form': form,
+        'doctor': doctor,
+    }
+
+    return render(request, 'core/doctors/edit_doctor.html', context)
+
+@login_required(login_url='/login/')
+@user_passes_test(superuser_check)
+def delete_doctor_view(request, doctor_id):
+    if request.method == 'POST':
+        doctor = get_object_or_404(CustomUser, id=doctor_id)
+        doctor.delete()
+        messages.success(request, 'Doctor deleted successfully.') 
+        return redirect('doctors')  
+
+    return redirect('doctors')
+
 
 @login_required(login_url='/login/')
 def patients_view(request):
-    # Retrieve all patients from the database
-    patients = Patient.objects.all()
+     # Retrieve all patients from the database
+    patients_list = Patient.objects.all().order_by('last_name')
+
+    # Set up pagination with 10 patients per page
+    paginator = Paginator(patients_list, 10)  # Show 10 patients per page
+
+    # Get the current page number from the request GET parameters
+    page_number = request.GET.get('page')
     
-    # Pass the patients queryset to the template
+    # Get the patients for the current page
+    patients = paginator.get_page(page_number)
+    
+    # Pass the paginated patients queryset to the template
     return render(request, 'core/patients/patients.html', {
         'current_page': 'patients',
         'patients': patients
     })
 
 @login_required(login_url='/login/')
-def add_patient(request):
+def add_patient_view(request):
     if request.method == 'POST':
         form = PatientForm(request.POST)
         if form.is_valid():
-            # Save the form data to create a new patient
-            form.save()
-            # Redirect to the patient list or any other page
-            return redirect('patients')
+            form.save()  
+            messages.success(request, 'Patient added successfully.')
+            return redirect('patients') 
+        else:
+            messages.error(request, 'Please correct the errors below.') 
     else:
-        form = PatientForm()  # Render an empty form for GET request
+        form = PatientForm()  
 
     return render(request, 'core/patients/add_patient.html', {'form': form})
+
+@login_required(login_url='/login/')
+def edit_patient_view(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+
+    if request.method == 'POST':
+        form = PatientForm(request.POST, instance=patient)
+        if form.is_valid():
+            form.save() 
+            messages.success(request, 'Patient details updated successfully.') 
+            return redirect('patients') 
+        else:
+            messages.error(request, 'Please correct the errors below.') 
+    else:
+        form = PatientForm(instance=patient)
+
+    context = {
+        'form': form,
+        'patient': patient,
+    }
+
+    return render(request, 'core/patients/edit_patient.html', context)
+
+@login_required(login_url='/login/')
+def delete_patient_view(request, patient_id):
+    patient = get_object_or_404(Patient, id=patient_id)
+
+    if request.method == 'POST':
+        patient.delete() 
+        messages.success(request, f'Patient {patient.first_name} {patient.last_name} was successfully deleted.') 
+        return redirect('patients')  
+
+    return redirect('patients')
 
 @login_required(login_url='/login/')
 def analysis_view(request):
@@ -100,14 +220,10 @@ def analysis_view(request):
         result = "Pending"
 
         try:
-            # Fetch the patient instance using the patient code
-            patient = Patient.objects.get(patient_code=patient_code)  # Assuming 'code' is the field in Patient model
-
-            
-            # Create a new Analysis instance
+            patient = Patient.objects.get(patient_code=patient_code)
             analysis = Analysis(
                 patient=patient,
-                doctor=request.user,  # The logged-in user is the doctor
+                doctor=request.user, 
                 image=image,
                 result=result
             )
@@ -118,59 +234,106 @@ def analysis_view(request):
             image_path = analysis.image.path
             print(image_path)
             tumor_types = load_labels()
-            # Call your prediction function
             predicted_tumor_type = predict_image(image_path, tumor_types)
             analysis.result = predicted_tumor_type
             analysis.save()
             context = {
                 'analysis': analysis,
+                'current_page': 'analysis',
             }
 
             return render(request, 'core/result.html', context)
 
         except Patient.DoesNotExist:
-            # messages.error(request, 'Patient with this code does not exist.')
-            return redirect('analysis')  # Redirect back to the analysis form
+            return redirect('analysis')
         
     patients = Patient.objects.all()
-    # if request.method == 'POST':
-    #     form = AnalysisForm(request.POST, request.FILES)
-    #     if form.is_valid():
-    #         # Get the uploaded image file and confidence threshold
-    #         image_file = form.cleaned_data['image_file']
-    #         confidence_threshold = form.cleaned_data['confidence_threshold']
 
-    #         # Save the uploaded image to the database
-    #         image_upload = ImageUpload(image=image_file)
-    #         image_upload.save()  # Save the image instance to the database
-
-    #         # Get the path to the uploaded image
-    #         image_path = image_upload.image.path  # This gives the full path to the uploaded image file
-    #         tumor_types = load_labels()
-    #         # Call your prediction function
-    #         predicted_index, predicted_tumor_type = predict_image(image_path, tumor_types)
-
-    #         return render(request, 'core/result.html', {
-    #             'prediction_index': predicted_index,
-    #             'prediction_tumor_type': predicted_tumor_type
-    #         })
-    #     else:
-    #         # Handle form errors
-    #         return render(request, 'core/analysis.html', {'form': form})
-
-    # # If GET request, display the empty form
-    # form = AnalysisForm()
     patients_json = serializers.serialize('json', patients) 
     context = {
-        'patients': patients_json,  # Pass the serialized data to the template
+        'patients': patients_json, 
         'current_page': 'analysis',
     }
     return render(request, 'core/analysis.html', context)
 
-
-
+@login_required(login_url='/login/')
+def view_analysis_view(request, id):
+    analysis = get_object_or_404(Analysis, id=id)
+    context = {
+        'analysis': analysis,
+        'current_page': 'analysis',
+    }
+    
+    return render(request, 'core/result.html', context)
 
 @login_required(login_url='/login/')
+def hospitals_view(request):
+    hospital_list = Hospital.objects.all()
+    paginator = Paginator(hospital_list, 10) 
+    page_number = request.GET.get('page')
+    hospitals = paginator.get_page(page_number)
+    context = {
+        'current_page': 'hospitals', 
+        'hospitals': hospitals, 
+    }
+    
+    return render(request, 'core/hospitals/hospitals.html', context)
+
+@login_required(login_url='/login/')
+@user_passes_test(superuser_check)
+def add_hospital_view(request):
+    if request.method == 'POST':
+        form = HospitalForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Hospital added successfully.') 
+            return redirect('hospitals') 
+        else:
+            messages.error(request, 'Please correct the errors below.') 
+    else:
+        form = HospitalForm()
+
+    context = {
+        'form': form,
+        'current_page': 'hospitals',
+    }
+    
+    return render(request, 'core/hospitals/add_hospital.html', context)
+
+@login_required(login_url='/login/')
+@user_passes_test(superuser_check)
+def edit_hospital_view(request, hospital_id):
+    hospital = get_object_or_404(Hospital, id=hospital_id)
+
+    if request.method == 'POST':
+        form = HospitalForm(request.POST, instance=hospital)
+        if form.is_valid():
+            form.save() 
+            messages.success(request, 'Hospital details updated successfully.') 
+            return redirect('hospitals') 
+        else:
+            messages.error(request, 'Please correct the errors below.')  
+    else:
+        form = HospitalForm(instance=hospital)
+
+    context = {
+        'form': form,
+        'hospital': hospital,
+    }
+
+    return render(request, 'core/hospitals/edit_hospital.html', context)
+
+def delete_hospital_view(request, hospital_id):
+    hospital = get_object_or_404(Hospital, id=hospital_id)
+
+    if request.method == 'POST':
+        hospital.delete() 
+        messages.success(request, f'Hospital "{hospital.name}" was successfully deleted.')
+        return redirect('hospitals') 
+    return redirect('hospitals')
+
+@login_required(login_url='/login/')
+@user_passes_test(superuser_check)
 def training_view(request):
     model_path = get_model_path()
     model_exists = os.path.exists(model_path)
@@ -204,26 +367,37 @@ def training_view(request):
             training_labels = convert_labels_to_categorical(training_labels, existing_labels)
             testing_labels = convert_labels_to_categorical(testing_labels, existing_labels)
 
-            # Load or create the model
-            print(len(dataset_labels))
             model = create_or_load_model(model_exists, learning_rate, len(dataset_labels))
-
-            # Train the model
-            train_model(model, training_images, training_labels, epochs)
+        
+            history = train_model(model, training_images, training_labels, epochs)
 
             # Save the trained model
             save_model(model)
 
-            # Save Labels
-            # save_labels(dataset_labels)
-
-            return redirect('dashboard')
+            # Convert the training history to a serializable format (JSON)
+            history_dict = {
+                'loss': history.history['loss'],
+                'val_loss': history.history['val_loss'],
+                'accuracy': history.history['accuracy'],
+                'val_accuracy': history.history['val_accuracy'],
+            }
+            messages.success(request, 'Training completed successfully.')
+            # Return the history data as JSON
+            return JsonResponse({'success': True, 'history': history_dict})
     else:
         form = TrainingSessionForm()
 
     return render(request, 'core/training.html', {'form': form, 'current_page': 'training'})
 
+@login_required(login_url='/login/')
+@user_passes_test(superuser_check)
+def training_results_view(request):
+    history = request.GET.get('history', None)
+    
+    if history:
+        history = json.loads(history)  # Convert JSON string to a Python dictionary
 
+    return render(request, 'core/training_results.html', {'history': history, 'current_page': 'training'})
 
 
 @login_required(login_url='/login/')
@@ -233,10 +407,6 @@ def settings_view(request):
 @login_required(login_url='/login/')
 def profile_view(request):
     return render(request, 'core/profile.html', {'current_page': 'profile'})
-
-
-
-
 
 def unzip_file(zip_file, extract_to='uploads/extracted/'):
     """
@@ -366,13 +536,7 @@ def create_or_load_model(model_exists, learning_rate, num_classes):
     model_path = get_model_path()
     if model_exists:
         model = load_model(model_path)
-         # Set appropriate loss function
-        if num_classes == 2:
-            loss = 'binary_crossentropy'
-        else:
-            loss = 'categorical_crossentropy'
-        
-        model.compile(optimizer='adam', loss=loss, metrics=['accuracy'])
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
     else:
         model = Sequential()
         # Adding convolutional layers
@@ -419,7 +583,14 @@ def create_or_load_model(model_exists, learning_rate, num_classes):
 
 def train_model(model, training_images, training_labels, epochs):
     """Train the model with the training dataset."""
-    return model.fit(training_images, training_labels, epochs=epochs, validation_split=0.1)
+    history = model.fit(
+        training_images, 
+        training_labels, 
+        epochs=epochs,
+        validation_split=0.1, 
+        verbose=1  # Set to 1 for detailed logging
+    )
+    return history
 
 def save_model(model):
     """Save the trained model."""

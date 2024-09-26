@@ -9,7 +9,28 @@
   </head>
   <body>
     {% block body %}
+    <div class="fixed top-0 left-0 right-0 z-50">
+      {% if messages %}
+          <div class="container mx-auto px-6 py-2">
+              {% for message in messages %}
+                  <div class="mb-4 p-4 rounded-lg text-white {% if message.tags == 'error' %}bg-red-600{% elif message.tags == 'success' %}bg-green-600{% else %}bg-blue-600{% endif %}">
+                      <span>{{ message }}</span>
+                  </div>
+              {% endfor %}
+          </div>
+      {% endif %}
+  </div>
     <!-- This is where content from other templates will go -->
     {% endblock %}
   </body>
+
+  <script>
+    // Automatically close the message div after 5 seconds
+    setTimeout(function() {
+        const messages = document.querySelectorAll('.fixed .mb-4');
+        messages.forEach(function(message) {
+            message.style.display = 'none';
+        });
+    }, 5000); // 5000 milliseconds = 5 seconds
+</script>
 </html>

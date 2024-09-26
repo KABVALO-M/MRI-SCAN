@@ -1,5 +1,5 @@
 from django import forms
-from .models import TrainingSession, CustomUser, Hospital
+from .models import TrainingSession, CustomUser, Hospital, Patient, Analysis
 from django.contrib.auth.forms import UserCreationForm
 
 
@@ -56,6 +56,46 @@ class DoctorForm(UserCreationForm):
         })
 
 
+class PatientForm(forms.ModelForm):
+
+    class Meta:
+        model = Patient
+        fields = ['first_name', 'last_name', 'age', 'gender', 'physical_address', 'phone_number', 'email']
+
+    def __init__(self, *args, **kwargs):
+        super(PatientForm, self).__init__(*args, **kwargs)
+        
+        # Apply Tailwind CSS classes to each field
+        self.fields['first_name'].widget.attrs.update({
+            'id': 'first_name',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+        })
+        self.fields['last_name'].widget.attrs.update({
+            'id': 'last_name',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+        })
+        self.fields['age'].widget.attrs.update({
+            'id': 'age',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+        })
+        self.fields['gender'].widget.attrs.update({
+            'id': 'gender',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+        })
+        self.fields['physical_address'].widget.attrs.update({
+            'id': 'physical_address',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+        })
+        self.fields['phone_number'].widget.attrs.update({
+            'id': 'phone_number',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+        })
+        self.fields['email'].widget.attrs.update({
+            'id': 'email',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+        })
+
+
 class TrainingSessionForm(forms.ModelForm):
     class Meta:
         model = TrainingSession
@@ -69,26 +109,28 @@ class TrainingSessionForm(forms.ModelForm):
         }
 
 
-class AnalysisForm(forms.Form):
-    # Field for uploading image files (JPG, PNG, BMP)
-    image_file = forms.ImageField(
-        label='Upload Image',
-        widget=forms.ClearableFileInput(attrs={'accept': 'image/jpeg,image/png,image/bmp', 'required': 'required'}),
-        help_text='Supported formats: JPG, PNG, BMP. Max size: 5MB.'
-    )
+class AnalysisForm(forms.ModelForm):
 
-    # Input for setting the confidence threshold
-    confidence_threshold = forms.FloatField(
-        label='Confidence Threshold',
-        initial=0.5,  # Default threshold
-        widget=forms.NumberInput(attrs={'min': 0.0, 'max': 1.0, 'step': 0.01}),
-        help_text='Set the minimum confidence level for predictions (0.0 to 1.0).'
-    )
+    class Meta:
+        model = Analysis
+        fields = ['patient', 'image', 'result']
     
-    # Custom clean method to handle file size validation (Optional)
-    def clean_image_file(self):
-        image = self.cleaned_data.get('image_file')
-        if image:
-            if image.size > 5 * 1024 * 1024:  # 5MB limit
-                raise forms.ValidationError('Image file is too large (max size is 5MB).')
-            return image
+    def __init__(self, *args, **kwargs):
+        super(AnalysisForm, self).__init__(*args, **kwargs)
+        
+        # Apply Tailwind CSS classes to each field
+        self.fields['patient'].widget.attrs.update({
+            'id': 'patient_code',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+            'placeholder': 'Enter patient code',
+        })
+        self.fields['image'].widget.attrs.update({
+            'id': 'image',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+            'accept': 'image/*',  # Limit the input to image files
+        })
+        self.fields['result'].widget.attrs.update({
+            'id': 'result',
+            'class': 'mt-1 block w-full border border-gray-300 rounded-lg py-2 px-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+            'placeholder': 'Enter analysis result',
+        })

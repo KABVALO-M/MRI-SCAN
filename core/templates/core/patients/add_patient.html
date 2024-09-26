@@ -2,20 +2,11 @@
 
 {% block body %}
   <div class="">
-    <h2 class="text-3xl font-bold mb-4 text-gray-700">Add a New Doctor</h2>
+    <h2 class="text-3xl font-bold mb-4 text-gray-700">Add a New Patient</h2>
 
     <div class="bg-white shadow-md rounded-lg px-8 py-6 flex justify-start">
-      <form method="post" class="space-y-6 w-1/2">
+      <form method="post" class="space-y-6 w-full max-w-3xl">
         {% csrf_token %}
-
-        <!-- Email Field (Full Row) -->
-        <div class="mb-4">
-          {{ form.email.label_tag }}
-          {{ form.email }}
-          {% if form.email.errors %}
-              <p class="text-red-600 text-sm">{{ form.email.errors }}</p>
-          {% endif %}
-        </div>
 
         <!-- First Name and Last Name (Two fields on one row) -->
         <div class="mb-4 flex space-x-4">
@@ -35,7 +26,7 @@
           </div>
         </div>
 
-        <!-- Phone Number and SSN (Two fields on one row) -->
+        <!-- Phone Number and Date of Birth (Two fields on one row) -->
         <div class="mb-4 flex space-x-4">
           <div class="w-1/2">
             {{ form.phone_number.label_tag }}
@@ -45,43 +36,55 @@
             {% endif %}
           </div>
           <div class="w-1/2">
-            {{ form.ssn.label_tag }}
-            {{ form.ssn }}
-            {% if form.ssn.errors %}
-                <p class="text-red-600 text-sm">{{ form.ssn.errors }}</p>
+            {{ form.age.label_tag }}
+            {{ form.age }}
+            {% if form.age.errors %}
+                <p class="text-red-600 text-sm">{{ form.age.errors }}</p>
             {% endif %}
           </div>
         </div>
 
+        
+        <!-- Email Field (Full Row) -->
         <div class="mb-4">
-          {{ form.hospital.label_tag }}
-          {{ form.hospital }}  <!-- This will now be a dropdown -->
-          {% if form.hospital.errors %}
-              <p class="text-red-600 text-sm">{{ form.hospital.errors }}</p>
+            {{ form.email.label_tag }}
+            {{ form.email }}
+            {% if form.email.errors %}
+                <p class="text-red-600 text-sm">{{ form.email.errors }}</p>
+            {% endif %}
+          </div>
+
+        <!-- Address (Full Row) -->
+        <div class="mb-4">
+          {{ form.physical_address.label_tag }}
+          {{ form.physical_address }}
+          {% if form.physical_address.errors %}
+              <p class="text-red-600 text-sm">{{ form.physical_address.errors }}</p>
           {% endif %}
         </div>
 
-        <!-- Password Fields (Full Row each) -->
-        <div class="mb-4">
-          {{ form.password1.label_tag }}
-          {{ form.password1 }}
-          {% if form.password1.errors %}
-              <p class="text-red-600 text-sm">{{ form.password1.errors }}</p>
-          {% endif %}
-        </div>
-        
-        <div class="mb-4">
-          {{ form.password2.label_tag }}
-          {{ form.password2 }}
-          {% if form.password2.errors %}
-              <p class="text-red-600 text-sm">{{ form.password2.errors }}</p>
-          {% endif %}
+        <!-- Gender and Insurance Number (Two fields on one row) -->
+        <div class="mb-4 flex space-x-4">
+          <div class="w-1/2">
+            {{ form.gender.label_tag }}
+            {{ form.gender }}
+            {% if form.gender.errors %}
+                <p class="text-red-600 text-sm">{{ form.gender.errors }}</p>
+            {% endif %}
+          </div>
+          <div class="w-1/2">
+            {{ form.insurance_number.label_tag }}
+            {{ form.insurance_number }}
+            {% if form.insurance_number.errors %}
+                <p class="text-red-600 text-sm">{{ form.insurance_number.errors }}</p>
+            {% endif %}
+          </div>
         </div>
 
         <!-- Submit Button at the bottom left -->
         <div class="flex justify-start">
           <button type="submit" class="bg-blue-500 text-white font-semibold py-2 px-6 rounded-lg shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50">
-            Add Doctor
+            Add Patient
           </button>
         </div>
       </form>

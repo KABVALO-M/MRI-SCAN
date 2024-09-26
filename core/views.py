@@ -1,9 +1,9 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from .forms import TrainingSessionForm, AnalysisForm, DoctorForm
+from .forms import TrainingSessionForm, AnalysisForm, DoctorForm, PatientForm
 from sklearn.model_selection import train_test_split
-from .models import TrainingSession, CustomUser
+from .models import TrainingSession, CustomUser,  Patient, Analysis
 import zipfile
 from pathlib import Path
 import os 
@@ -14,6 +14,7 @@ import tensorflow as tf
 import keras
 from tensorflow.keras.optimizers import Adam # type: ignore
 from django.conf import settings 
+from django.core import serializers
 
 # Login view
 def login_view(request):
@@ -54,6 +55,7 @@ def doctors_view(request):
         'doctors': doctors
     })
 
+@login_required(login_url='/login/')
 def add_doctor_view(request):
     if request.method == 'POST':
         form = DoctorForm(request.POST)
@@ -67,10 +69,70 @@ def add_doctor_view(request):
 
 @login_required(login_url='/login/')
 def patients_view(request):
-    return render(request, 'core/patients.html', {'current_page': 'patients'})
+    # Retrieve all patients from the database
+    patients = Patient.objects.all()
+    
+    # Pass the patients queryset to the template
+    return render(request, 'core/patients/patients.html', {
+        'current_page': 'patients',
+        'patients': patients
+    })
+
+@login_required(login_url='/login/')
+def add_patient(request):
+    if request.method == 'POST':
+        form = PatientForm(request.POST)
+        if form.is_valid():
+            # Save the form data to create a new patient
+            form.save()
+            # Redirect to the patient list or any other page
+            return redirect('patients')
+    else:
+        form = PatientForm()  # Render an empty form for GET request
+
+    return render(request, 'core/patients/add_patient.html', {'form': form})
 
 @login_required(login_url='/login/')
 def analysis_view(request):
+    if request.method == 'POST':
+        patient_code = request.POST.get('patient_code')
+        image = request.FILES.get('image')
+        result = "Pending"
+
+        try:
+            # Fetch the patient instance using the patient code
+            patient = Patient.objects.get(patient_code=patient_code)  # Assuming 'code' is the field in Patient model
+
+            
+            # Create a new Analysis instance
+            analysis = Analysis(
+                patient=patient,
+                doctor=request.user,  # The logged-in user is the doctor
+                image=image,
+                result=result
+            )
+            analysis.save()
+
+            print(analysis)
+
+            image_path = analysis.image.path
+            print(image_path)
+            tumor_types = load_labels()
+            # Call your prediction function
+            predicted_tumor_type = predict_image(image_path, tumor_types)
+            analysis.result = predicted_tumor_type
+            analysis.save()
+            context = {
+                'analysis': analysis,
+            }
+
+            return render(request, 'core/result.html', context)
+
+        except Patient.DoesNotExist:
+            # messages.error(request, 'Patient with this code does not exist.')
+            return redirect('analysis')  # Redirect back to the analysis form
+        
+    patients = Patient.objects.all()
     # if request.method == 'POST':
     #     form = AnalysisForm(request.POST, request.FILES)
     #     if form.is_valid():
@@ -98,7 +160,15 @@ def analysis_view(request):
 
     # # If GET request, display the empty form
     # form = AnalysisForm()
-    return render(request, 'core/analysis.html')
+    patients_json = serializers.serialize('json', patients) 
+    context = {
+        'patients': patients_json,  # Pass the serialized data to the template
+        'current_page': 'analysis',
+    }
+    return render(request, 'core/analysis.html', context)
+
+
+
 
 @login_required(login_url='/login/')
 def training_view(request):
@@ -398,4 +468,4 @@ def predict_image(image_path, tumor_types):
         # Return the predicted class index and its corresponding tumor type
         predicted_tumor_type = tumor_types[predicted_index]
 
-        return predicted_index, predicted_tumor_type
+        return predicted_tumor_type

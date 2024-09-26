@@ -100,13 +100,16 @@ class Patient(models.Model):
         Override the save method to generate a unique patient_code if not provided.
         """
         if not self.patient_code:
-            # Base code formed by first_name and last_name
-            base_code = f"{self.first_name.lower()}{self.last_name.lower()}"
+            # Generate the base code using the first two letters of first and last name
+            base_code = f"{self.first_name[:2].upper()}{self.last_name[:2].upper()}"
+
+            # Use a default patient_code first
             patient_code = base_code
             number = 1
 
-            # Keep checking for existing patient_code and increment the number until a unique code is found
+            # Check for existing patient codes with the same base, and append a number if needed
             while Patient.objects.filter(patient_code=patient_code).exists():
+                # Increment the number and append to the base code until a unique one is found
                 patient_code = f"{base_code}{number}"
                 number += 1
 

@@ -1,7 +1,68 @@
+
+function previewImage(event) {
+    const reader = new FileReader();
+    reader.onload = function () {
+        const output = document.getElementById('image_preview');
+        output.src = reader.result;
+    }
+    reader.readAsDataURL(event.target.files[0]);
+}
+
+
+// Function to update the fields based on the patient code
+function updatePatientFields() {
+    // Get the entered patient code from the input field
+    const patientCode = document.getElementById('patient_code').value;
+
+    // Search for a matching patient in the patients array
+    const matchingPatient = patients.find(patient => patient.fields.patient_code === patientCode);
+
+    if (matchingPatient) {
+        // If a matching patient is found, update the form fields
+        document.getElementById('first_name').value = matchingPatient.fields.first_name;
+        document.getElementById('last_name').value = matchingPatient.fields.last_name;
+        document.getElementById('age').value = matchingPatient.fields.age;
+        document.getElementById('gender').value = matchingPatient.fields.gender;
+    } else {
+        // If no matching patient is found, clear the fields
+        document.getElementById('first_name').value = '';
+        document.getElementById('last_name').value = '';
+        document.getElementById('age').value = '';
+        document.getElementById('gender').value = '';
+    }
+}
+
+// Attach the function to the onchange or oninput event of the patient code input
+document.getElementById('patient_code').oninput = updatePatientFields;
+
+
+
+function checkFields() {
+    const patientCode = document.getElementById('patient_code').value.trim();
+    const firstName = document.getElementById('first_name').value.trim();
+    const lastName = document.getElementById('last_name').value.trim();
+    const age = document.getElementById('age').value.trim();
+    const gender = document.getElementById('gender').value.trim();
+    const imageInput = document.getElementById('image').value.trim();
+
+    // Get the Analyse button
+    const analyseButton = document.getElementById('analyseButton');
+
+    // Check if all fields are filled
+    if (patientCode && firstName && lastName && age && gender && imageInput) {
+        // Enable the button if all fields are filled
+        analyseButton.disabled = false;
+    } else {
+        // Disable the button if any field is empty
+        analyseButton.disabled = true;
+    }
+}
+
+
 document.addEventListener("DOMContentLoaded", function () {
     // Get the file input and upload label elements
-    const fileInput = document.getElementById('file-upload');
-    const fileUploadText = document.getElementById('file-upload-text');
+    const fileInput = document.getElementById('image'); // Updated to match the new input ID
+    const fileUploadText = document.getElementById('image-upload-text'); // Updated to match the new ID
 
     // File types allowed
     const allowedFileTypes = ['image/jpeg', 'image/png', 'image/bmp'];
@@ -36,7 +97,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     // Prevent default behavior for drag-and-drop
-    const dropArea = document.querySelector('.w-full.h-32.border-dashed');
+    const dropArea = document.querySelector('.border-dashed'); // Updated to use the dashed border class
     
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropArea.addEventListener(eventName, preventDefaults, false);

@@ -1,0 +1,57 @@
+{% extends 'core/base_layout.html' %}
+{% load static %}
+{% block body %}
+<div>
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold mb-4 text-gray-700">Patients</h1>
+        <!-- Button to Add New Patient in the same line as the heading -->
+        <a href="{% url 'add_patient' %}" class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md hover:bg-green-700 focus:outline-none focus:bg-green-700">Add New Patient</a>
+    </div>
+
+    <!-- Patients Table -->
+    <div class="overflow-x-auto">
+        <table class="min-w-full bg-white border border-gray-200 rounded-lg shadow-lg">
+            <thead>
+                <tr class="bg-gray-200 text-gray-700 uppercase text-sm leading-normal">
+                    <th class="py-4 px-6 text-left">Patient Code</th>
+                    <th class="py-4 px-6 text-left">First Name</th>
+                    <th class="py-4 px-6 text-left">Last Name</th>
+                    <th class="py-4 px-6 text-left">Age</th>
+                    <th class="py-4 px-6 text-left">Gender</th>
+                    <th class="py-4 px-6 text-left">Phone Number</th>
+                    <th class="py-4 px-6 text-left">Email</th>
+                    <th class="py-4 px-6 text-left">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="text-gray-700 text-sm">
+                <!-- Loop through patients passed from the view -->
+                {% for patient in patients %}
+                <tr class="border-b border-gray-200 hover:bg-gray-100 transition duration-300">
+                    <td class="py-4 px-6">{{ patient.patient_code }}</td>
+                    <td class="py-4 px-6">{{ patient.first_name }}</td>
+                    <td class="py-4 px-6">{{ patient.last_name }}</td>
+                    <td class="py-4 px-6">{{ patient.age }}</td>
+                    <td class="py-4 px-6">{{ patient.get_gender_display }}</td>
+                    <td class="py-4 px-6">{{ patient.phone_number }}</td>
+                    <td class="py-4 px-6">{{ patient.email }}</td>
+                    <td class="py-4 px-6 flex space-x-2">
+                        <a href="" class="text-blue-600 hover:text-blue-800 flex items-center space-x-1">
+                            <i class="fas fa-edit"></i> 
+                            <span>Edit</span>
+                        </a>
+                        <a href="" class="text-red-600 hover:text-red-800 flex items-center space-x-1">
+                            <i class="fas fa-trash-alt"></i> 
+                            <span>Delete</span>
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="py-4 px-6 text-center">No patients found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
